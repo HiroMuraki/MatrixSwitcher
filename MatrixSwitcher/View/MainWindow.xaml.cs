@@ -68,5 +68,9 @@ namespace MatrixSwitcher {
         private void Window_Close(object sender, RoutedEventArgs e) {
             Application.Current.Shutdown();
         }
+
+        private void DisplayHelp_Click(object sender, RoutedEventArgs e) {
+            MessageBox.Show(MatrixPresenter.TransformCommandHelp, "矩阵变化命令帮助");
+        }
     }
 }

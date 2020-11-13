@@ -27,6 +27,12 @@ namespace MatrixSwitcher.ViewModel {
         Error
     }
     public class MatrixPresenter : ViewModelBase {
+        public static readonly string TransformCommandHelp =
+            "CR x y : 交换第x行和第y行元素\n" +
+            "MR x n : 将第x行元素乘以n\n"+
+            "DR x y n : 为第x行加上y行的n倍\n"+
+            "TS : 转置矩阵";
+
         #region 正则匹配
         private static readonly Regex CR = new Regex(@"[Cc][Rr][ ]+[0-9]+[ ]+[0-9]+");
         private static readonly Regex MR = new Regex(@"[Mm][Rr][ ]+[0-9]+[ ]+[-]?[0-9/]+");
