@@ -274,11 +274,11 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <TextBox  Grid.Column="0" Style="{StaticResource MatrixInputBox}" Background="AliceBlue"
+                <TextBox  Grid.Column="0" Style="{StaticResource MatrixInputBox}"
                           Text="{Binding Matrix.Matrix1,Converter={StaticResource StringToMatrix}}"/>
-                <GridSplitter Grid.Column="1" Background="Transparent" Width="4" HorizontalAlignment="Center"
+                <GridSplitter Grid.Column="1" Background="#e0e0e0" Width="4" HorizontalAlignment="Center"
                               ResizeDirection="Columns" Margin="-2,0"/>
-                <TextBox  Grid.Column="2" Style="{StaticResource MatrixInputBox}" Background="AntiqueWhite"
+                <TextBox  Grid.Column="2" Style="{StaticResource MatrixInputBox}"
                           Text="{Binding Matrix.Matrix2,Converter={StaticResource StringToMatrix}}"/>
             </Grid>
             <GridSplitter Grid.Row="2" Height="4" Margin="0,-2" Background="Transparent" 

@@ -26,11 +26,18 @@ namespace MatrixSwitcher.ViewModel {
         Ok,
         Error
     }
+    public enum MatrixTransformType {
+        CR,
+        MR,
+        DR,
+        TS,
+        Error
+    }
     public class MatrixPresenter : ViewModelBase {
         public static readonly string TransformCommandHelp =
-            "CR x y : 交换第x行和第y行元素\n" +
-            "MR x n : 将第x行元素乘以n\n"+
-            "DR x y n : 为第x行加上y行的n倍\n"+
+            "CR x y : 交换第x行和第y行元素\n\n" +
+            "MR x n : 将第x行元素乘以n\n\n" +
+            "DR x y n : 为第x行加上y行的n倍\n\n" +
             "TS : 转置矩阵";
 
         #region 正则匹配
@@ -56,6 +63,7 @@ namespace MatrixSwitcher.ViewModel {
             set {
                 _matrix1 = value;
                 this.OnPropertyChanged(nameof(Matrix1));
+                this.GetMainMatrix();
             }
         }
         public MatrixOperator Operator {
@@ -73,6 +81,7 @@ namespace MatrixSwitcher.ViewModel {
             set {
                 _matrix2 = value;
                 this.OnPropertyChanged(nameof(Matrix2));
+                this.GetMainMatrix();
             }
         }
         public Mathematics.Matrix MainMatrix {
@@ -96,7 +105,7 @@ namespace MatrixSwitcher.ViewModel {
         }
         public string Determinate {
             get {
-                string value = "???";
+                string value = "";
                 try {
                     value = this.MainMatrix.GetDeterminate().ToString();
                 }
@@ -162,7 +171,20 @@ namespace MatrixSwitcher.ViewModel {
         /// 异步执行矩阵变换操作
         /// </summary>
         public async void StartTransformsAsync() {
-            await Task.Run(this.StartransformsCore);
+            int transformCount = this.Transforms.Count;
+            //如果命令数量小于等于0，则不执行操作
+            //否则判断最近的一条命令是否有效，如果有效则执行操作，无效则返回
+            if (transformCount <= 0) {
+                return;
+            } else {
+                string recentCommand = Transforms[transformCount - 1];
+                if (GetTransformType(recentCommand) == MatrixTransformType.Error) {
+                    this.TransformStatus = MatrixTransformStatus.Error;
+                    this.MatrixTransformErrorMessage = $"无效的操作: {recentCommand}";
+                    return;
+                }
+            }
+            await Task.Run(this.StartTransformsCore);
         }
         /// <summary>
         ///  交换1号和2号矩阵
@@ -254,7 +276,7 @@ namespace MatrixSwitcher.ViewModel {
         /// <summary>
         /// 执行矩阵变换操作
         /// </summary>
-        private void StartransformsCore() {
+        private void StartTransformsCore() {
             GetMainMatrix();
             this.TransfromTips?.Clear();
             this.MatrixTransformErrorMessage = "";
@@ -262,27 +284,34 @@ namespace MatrixSwitcher.ViewModel {
                 foreach (var item in Transforms) {
                     string transform = Regex.Replace(item, "[ ]+", " ");
                     string[] args = transform.Split(' ');
-                    if (CR.IsMatch(transform)) {
-                        int xRow = Convert.ToInt32(args[1]);
-                        int yRow = Convert.ToInt32(args[2]);
-                        this.MainMatrix.RowSwitch(xRow - 1, yRow - 1);
-                        this.TransfromTips.Add($"r{xRow } \u2b82 r{yRow}");
-                    } else if (MR.IsMatch(transform)) {
-                        int row = Convert.ToInt32(args[1]);
-                        RationalNumber n = new RationalNumber(args[2]);
-                        this.MainMatrix.MRSwitch(n, row - 1);
-                        this.TransfromTips.Add($"r{row} x {n}");
-                    } else if (DR.IsMatch(transform)) {
-                        int targetRow = Convert.ToInt32(args[1]);
-                        int sourceRow = Convert.ToInt32(args[2]);
-                        RationalNumber n = new RationalNumber(args[3]);
-                        this.MainMatrix.DRSwitch(n, sourceRow - 1, targetRow - 1);
-                        this.TransfromTips.Add($"r{targetRow} + r{sourceRow} * {n}");
-                    } else if (Trans.IsMatch(transform)) {
-                        this.MainMatrix = this.MainMatrix.Trans();
-                        this.TransfromTips.Add($"转置");
-                    } else {
-                        throw new InvalidOperationException($"无效的操作: {transform}");
+                    switch (GetTransformType(transform)) {
+                        default:
+                            goto case MatrixTransformType.Error;
+                        case MatrixTransformType.CR:
+                            int xRow = Convert.ToInt32(args[1]);
+                            int yRow = Convert.ToInt32(args[2]);
+                            this.MainMatrix.RowSwitch(xRow - 1, yRow - 1);
+                            this.TransfromTips.Add($"r{xRow } \u2b82 r{yRow}");
+                            break;
+                        case MatrixTransformType.MR:
+                            int row = Convert.ToInt32(args[1]);
+                            RationalNumber n = new RationalNumber(args[2]);
+                            this.MainMatrix.MRSwitch(n, row - 1);
+                            this.TransfromTips.Add($"r{row} x {n}");
+                            break;
+                        case MatrixTransformType.DR:
+                            int targetRow = Convert.ToInt32(args[1]);
+                            int sourceRow = Convert.ToInt32(args[2]);
+                            RationalNumber n1 = new RationalNumber(args[3]);
+                            this.MainMatrix.DRSwitch(n1, sourceRow - 1, targetRow - 1);
+                            this.TransfromTips.Add($"r{targetRow} + r{sourceRow} * {n1}");
+                            break;
+                        case MatrixTransformType.TS:
+                            this.MainMatrix = this.MainMatrix.Trans();
+                            this.TransfromTips.Add($"转置");
+                            break;
+                        case MatrixTransformType.Error:
+                            throw new InvalidOperationException($"无效的操作: {transform}");
                     }
                 }
                 this.TransformStatus = MatrixTransformStatus.Ok;
@@ -291,9 +320,9 @@ namespace MatrixSwitcher.ViewModel {
                 this.TransformStatus = MatrixTransformStatus.Error;
                 this.MatrixTransformErrorMessage = e.Message;
             }
-            catch (ArgumentOutOfRangeException e) {
+            catch (IndexOutOfRangeException) {
                 this.TransformStatus = MatrixTransformStatus.Error;
-                this.MatrixTransformErrorMessage = e.Message;
+                this.MatrixTransformErrorMessage = "行范围越界";
             }
             catch {
                 this.TransformStatus = MatrixTransformStatus.Error;
@@ -304,6 +333,26 @@ namespace MatrixSwitcher.ViewModel {
                 this.SimpifyMatrix();
                 this.OnMainMatrixChanged();
             }
+        }
+        /// <summary>
+        /// 获取矩阵变化指令类型
+        /// </summary>
+        /// <param name="command">变化指令</param>
+        /// <returns></returns>
+        private static MatrixTransformType GetTransformType(string command) {
+            if (CR.IsMatch(command)) {
+                return MatrixTransformType.CR;
+            }
+            if (MR.IsMatch(command)) {
+                return MatrixTransformType.MR;
+            }
+            if (DR.IsMatch(command)) {
+                return MatrixTransformType.DR;
+            }
+            if (Trans.IsMatch(command)) {
+                return MatrixTransformType.TS;
+            }
+            return MatrixTransformType.Error;
         }
         #endregion
     }
